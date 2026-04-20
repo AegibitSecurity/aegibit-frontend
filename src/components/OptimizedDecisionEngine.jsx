@@ -164,7 +164,11 @@ const premiumStyles = `
     z-index: 450;
     display: flex;
     align-items: flex-end;
-    animation: fadeIn 150ms ease-out;
+    animation: ode-fade-in 150ms ease-out;
+  }
+  @keyframes ode-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
   .ode-sheet {
     width: 100%;
@@ -173,18 +177,40 @@ const premiumStyles = `
     border-top: 1px solid var(--ode-border-strong);
     max-height: 85vh;
     overflow-y: auto;
-    animation: ode-sheet-up 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: ode-sheet-up 300ms cubic-bezier(0.32, 0.72, 0, 1);
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    touch-action: pan-y;
+    will-change: transform;
   }
   @keyframes ode-sheet-up {
-    from { transform: translateY(100%); opacity: 0.5; }
-    to   { transform: translateY(0);    opacity: 1; }
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .ode-sheet-drag-handle-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px 4px;
+    position: relative;
   }
   .ode-sheet-handle {
     width: 36px; height: 4px;
     background: var(--ode-border-strong);
     border-radius: 9999px;
-    margin: 12px auto 8px;
+  }
+  .ode-sheet-close-btn {
+    position: absolute;
+    right: 16px;
+    top: 8px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--ode-glass);
+    border: 1px solid var(--ode-border);
+    color: var(--ode-text-dim);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
   }
 
   /* ── Touch-safe buttons (min 44px) ─────────────────────────────────── */
@@ -193,6 +219,58 @@ const premiumStyles = `
     flex: 1;
   }
 `;
+
+// ─── Swipe-to-dismiss bottom sheet ──────────────────────────────────────────
+function MobileSheet({ onClose, children }) {
+  const sheetRef = useRef(null);
+  const startY = useRef(0);
+  const dragY = useRef(0);
+
+  const onTouchStart = (e) => {
+    startY.current = e.touches[0].clientY;
+    dragY.current = 0;
+    if (sheetRef.current) sheetRef.current.style.transition = 'none';
+  };
+
+  const onTouchMove = (e) => {
+    const delta = e.touches[0].clientY - startY.current;
+    dragY.current = delta;
+    if (delta > 0 && sheetRef.current) {
+      sheetRef.current.style.transform = `translateY(${delta}px)`;
+    }
+  };
+
+  const onTouchEnd = () => {
+    const el = sheetRef.current;
+    if (!el) return;
+    el.style.transition = 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)';
+    if (dragY.current > 80) {
+      el.style.transform = 'translateY(100%)';
+      setTimeout(onClose, 260);
+    } else {
+      el.style.transform = 'translateY(0)';
+    }
+  };
+
+  return (
+    <div className="ode-sheet-overlay" onClick={onClose}>
+      <div
+        ref={sheetRef}
+        className="ode-sheet"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div className="ode-sheet-drag-handle-row">
+          <div className="ode-sheet-handle" />
+          <button className="ode-sheet-close-btn" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 // ─── Shared badge helpers ────────────────────────────────────────────────────
 const RiskBadge = ({ risk }) => (
@@ -474,29 +552,53 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
   // ── MOBILE: card layout ─────────────────────────────────────────────────────
   if (isMobile) {
     const canAct = (deal) => (userRole === 'GM' || userRole === 'DIRECTOR') && deal.status === 'PENDING';
+    const riskBorder = (risk) =>
+      risk === 'HIGH' ? 'var(--ode-red)' : risk === 'MEDIUM' ? 'var(--ode-yellow)' : 'var(--ode-green)';
+
+    const emptyState = !loading && deals.length === 0 && (
+      <div style={{
+        padding: '64px 24px', textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+      }}>
+        <div style={{
+          width: '64px', height: '64px', borderRadius: '16px',
+          background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--ode-text-dim)',
+        }}>
+          {Ico.layers}
+        </div>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ode-text-sec)' }}>No deals yet</div>
+        <div style={{ fontSize: '13px', color: 'var(--ode-text-dim)', lineHeight: 1.5, maxWidth: '220px' }}>
+          New deals will appear here in real-time as they are created
+        </div>
+      </div>
+    );
 
     return (
       <div>
         {sectionHeader}
+        {emptyState}
         <div style={{ paddingBottom: '8px' }}>
           {deals.map((deal) => (
             <div
               key={deal.id}
               className={`ode-deal-card${selectedDeal?.id === deal.id ? ' ode-active' : ''}`}
+              style={{ borderLeft: `3px solid ${riskBorder(deal.risk_level)}` }}
               onClick={() => onDealSelect(deal)}
             >
               {/* Row 1: customer + price */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ode-text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ode-text)', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {deal.customer_name}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--ode-text-dim)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--ode-text-dim)', fontWeight: 500 }}>
                     {deal.model} · {deal.variant}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ode-text)', fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ode-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
                     {formatCurrency(deal.final_price)}
                   </div>
                   <div style={{
@@ -1140,19 +1242,16 @@ export default memo(function OptimizedDecisionEngine() {
 
       {/* Mobile: analysis bottom sheet (slides up when deal is selected) */}
       {isMobile && selectedDeal && (
-        <div className="ode-sheet-overlay" onClick={() => setSelectedDeal(null)}>
-          <div className="ode-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="ode-sheet-handle" />
-            <AnalysisPanel
-              selectedDeal={selectedDeal}
-              userRole={userRole}
-              onDealAction={(deal, action) => {
-                handleDealAction(deal, action);
-                setSelectedDeal(null);
-              }}
-            />
-          </div>
-        </div>
+        <MobileSheet onClose={() => setSelectedDeal(null)}>
+          <AnalysisPanel
+            selectedDeal={selectedDeal}
+            userRole={userRole}
+            onDealAction={(deal, action) => {
+              handleDealAction(deal, action);
+              setSelectedDeal(null);
+            }}
+          />
+        </MobileSheet>
       )}
     </div>
   );
