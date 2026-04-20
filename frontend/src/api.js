@@ -21,8 +21,8 @@
 
 import * as Sentry from '@sentry/react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1';
-const WS_BASE  = import.meta.env.VITE_WS_BASE  || API_BASE.replace(/^http/, 'ws').replace(/\/api\/v1$/, '');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const WS_BASE  = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '');
 
 const isDev = import.meta.env.DEV;
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -134,7 +134,7 @@ async function _attempt(path, options, requestId) {
   const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       credentials: 'include', // always send the auth cookie
       headers: {
@@ -446,7 +446,7 @@ export async function uploadPricing(file) {
   formData.append('file', file);
 
   try {
-    const res = await fetch(`${API_BASE}/upload-excel`, {
+    const res = await fetch(`${API_BASE_URL}/upload-excel`, {
       method: 'POST',
       credentials: 'include', // auth cookie
       headers: { 'X-Request-ID': requestId },
