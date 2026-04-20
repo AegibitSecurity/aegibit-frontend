@@ -7,6 +7,7 @@ import ToastContainer from './components/ToastContainer';
 import AppError from './components/AppError';
 import { themeManager } from './utils/theme';
 import { useIsMobile } from './hooks/useIsMobile';
+import { useAppUpdate } from './hooks/useAppUpdate';
 import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken, fetchDashboard, getOrgId } from './api';
 
 const OptimizedDecisionEngine = lazy(() => import('./components/OptimizedDecisionEngine'));
@@ -76,6 +77,7 @@ export default function App() {
 
   const isMobile = useIsMobile();
   const currentUser = getUser();
+  const { updateReady, installUpdate } = useAppUpdate();
   const isAdmin = currentUser?.role === 'ADMIN';
 
   // ── On mount: validate the stored token with a real API call ─────────────
@@ -241,6 +243,31 @@ export default function App() {
           letterSpacing: '0.01em',
         }}>
           {drainMsg}
+        </div>
+      )}
+      {updateReady && (
+        <div style={{
+          position: 'fixed', bottom: isMobile ? 72 : 24, left: '50%',
+          transform: 'translateX(-50%)', zIndex: 9998,
+          background: '#1e293b', color: '#f1f5f9',
+          border: '1px solid #334155',
+          borderRadius: 12, padding: '12px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          fontSize: '13px', fontWeight: 500,
+          whiteSpace: 'nowrap',
+        }}>
+          <span>A new version is ready.</span>
+          <button
+            onClick={installUpdate}
+            style={{
+              background: '#3b82f6', color: '#fff', border: 'none',
+              borderRadius: 8, padding: '6px 14px',
+              fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Update now
+          </button>
         </div>
       )}
       {/* Global non-blocking error banner */}
