@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AEGIBIT Flow</string>
+    <string name="title_activity_main">AEGIBIT Flow</string>
+    <string name="package_name">com.aegibit.flow</string>
+    <string name="custom_url_scheme">com.aegibit.flow</string>
+</resources>

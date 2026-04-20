@@ -70,6 +70,7 @@ export default function App() {
   const [pendingCount, setPendingCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const isMobile = useIsMobile();
   const currentUser = getUser();
@@ -151,6 +152,14 @@ export default function App() {
     setSidebarOpen(false);
   }, []);
 
+  useEffect(() => {
+    const up = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
+
   useEffect(() => { themeManager.init(); }, []);
 
   useEffect(() => {
@@ -190,6 +199,16 @@ export default function App() {
 
   return (
     <div className="app-layout">
+      {!isOnline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#f59e0b', color: '#000', textAlign: 'center',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600,
+          letterSpacing: '0.01em',
+        }}>
+          You are offline — changes will not be saved
+        </div>
+      )}
       {/* Global non-blocking error banner */}
       <AppError />
 

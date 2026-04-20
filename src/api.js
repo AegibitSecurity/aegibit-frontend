@@ -21,11 +21,55 @@
 
 import * as Sentry from '@sentry/react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1';
-const WS_BASE  = import.meta.env.VITE_WS_BASE  || API_BASE.replace(/^http/, 'ws').replace(/\/api\/v1$/, '');
+// ── Platform detection ────────────────────────────────────────────────────────
+// Capacitor sets window.Capacitor when running as a native app.
+// This is available at module load time — no async needed.
+const isNative = !!(window.Capacitor?.isNativePlatform?.());
+
+// Native: call backend directly (no Vercel proxy available in WebView).
+// Web: use relative URL so Vercel proxy handles it (first-party cookie).
+const API_BASE_URL = isNative
+  ? 'https://aegibit-backend.onrender.com/api/v1'
+  : (import.meta.env.VITE_API_BASE_URL || '/api/v1');
+
+const WS_BASE = import.meta.env.VITE_WS_BASE ||
+  (isNative ? 'wss://aegibit-backend.onrender.com' : '/');
 
 const isDev = import.meta.env.DEV;
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = isNative ? 20_000 : 15_000; // extra time for mobile networks
+
+// ── Native token storage (Capacitor Preferences) ─────────────────────────────
+// On native, JWT is stored in device secure storage — not a cookie, not localStorage.
+// On web, auth is entirely cookie-based; these functions are no-ops.
+
+const NATIVE_TOKEN_KEY = 'access_token';
+
+async function getNativeToken() {
+  if (!isNative) return null;
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    const { value } = await Preferences.get({ key: NATIVE_TOKEN_KEY });
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+async function setNativeToken(token) {
+  if (!isNative || !token) return;
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.set({ key: NATIVE_TOKEN_KEY, value: token });
+  } catch { /* ignore */ }
+}
+
+async function clearNativeToken() {
+  if (!isNative) return;
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.remove({ key: NATIVE_TOKEN_KEY });
+  } catch { /* ignore */ }
+}
 
 // ── User state (non-sensitive — UI only, no tokens) ───────────────────────────
 
@@ -43,16 +87,17 @@ export function setUser(user) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-export function clearAuthState() {
+export async function clearAuthState() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem('aegibit_org_id');
   localStorage.removeItem('aegibit_role');
   localStorage.removeItem('aegibit_org_name');
+  await clearNativeToken();
 }
 
 // Legacy aliases — kept so App.jsx and callers don't need changes
 export function getToken()  { return null; }
-export function setToken()  { /* no-op: auth via cookie */ }
+export function setToken()  { /* no-op */ }
 export function clearToken() { clearAuthState(); }
 export function isAuthenticated() { return !!getUser(); }
 
@@ -133,13 +178,21 @@ async function _attempt(path, options, requestId) {
   const controller = new AbortController();
   const timeoutId  = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  // Native: attach Bearer token. Web: use cookie (credentials: include).
+  const authHeaders = {};
+  if (isNative) {
+    const token = await getNativeToken();
+    if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      credentials: 'include', // always send the auth cookie
+      credentials: isNative ? 'omit' : 'include',
       headers: {
         'Content-Type': 'application/json',
         'X-Request-ID': requestId,
+        ...authHeaders,
         ...options.headers,
       },
       signal: controller.signal,
@@ -304,7 +357,11 @@ export async function login(email, password) {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  // data = { user: {...} }  — token is in the HTTP-only cookie, not here
+  // Web: token is in the HTTP-only cookie, data.access_token is ignored.
+  // Native: token is in data.access_token, stored in device secure storage.
+  if (isNative && data.access_token) {
+    await setNativeToken(data.access_token);
+  }
   setUser(data.user);
   setOrgId(data.user.organization_id);
   setRole(data.user.role);
@@ -312,9 +369,8 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-  // Tell the server to clear the cookie
   await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
-  clearAuthState();
+  await clearAuthState();
 }
 
 export async function fetchCurrentUser() {
@@ -445,11 +501,17 @@ export async function uploadPricing(file) {
   const formData = new FormData();
   formData.append('file', file);
 
+  const uploadAuthHeaders = {};
+  if (isNative) {
+    const token = await getNativeToken();
+    if (token) uploadAuthHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/upload-excel`, {
+    const res = await fetch(`${API_BASE_URL}/upload-excel`, {
       method: 'POST',
-      credentials: 'include', // auth cookie
-      headers: { 'X-Request-ID': requestId },
+      credentials: isNative ? 'omit' : 'include',
+      headers: { 'X-Request-ID': requestId, ...uploadAuthHeaders },
       body: formData,
       signal: controller.signal,
     });

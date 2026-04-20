@@ -1115,9 +1115,7 @@ export default memo(function OptimizedDecisionEngine() {
       return;
     }
     try {
-      console.log('Deleting deal:', deal.id);
       const result = await deleteDeal(deal.id);
-      console.log('Delete result:', result);
       await loadData();
       if (selectedDealRef.current?.id === deal.id) {
         setSelectedDeal(null);
