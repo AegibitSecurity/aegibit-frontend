@@ -653,7 +653,7 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
               {userRole === 'ADMIN' && (
                 <button
                   className="ode-btn ode-btn-delete ode-btn-touch"
-                  onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this deal?')) { onDelete?.(deal); } }}
+                  onClick={(e) => { e.stopPropagation(); onDelete?.(deal); }}
                   style={{
                     width: '100%', padding: '10px', minHeight: '44px',
                     background: 'var(--ode-red-soft)', color: 'var(--ode-red)',
@@ -747,7 +747,7 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
                 </>
               )}
               {userRole === 'ADMIN' && (
-                <button className="ode-btn ode-btn-delete" onClick={(e) => { e.stopPropagation(); if (window.confirm('Are you sure? This can be restored later.')) { onDelete?.(deal); } }}
+                <button className="ode-btn ode-btn-delete" onClick={(e) => { e.stopPropagation(); onDelete?.(deal); }}
                   style={{ padding: '4px 14px', background: 'var(--ode-red-soft)', color: 'var(--ode-red)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {Ico.trash} Delete
                 </button>
@@ -1002,6 +1002,11 @@ export default memo(function OptimizedDecisionEngine() {
   const [error, setError] = useState('');
   const selectedDealRef = useRef(null);
 
+  // Delete confirmation + undo snackbar
+  const [deleteTarget, setDeleteTarget] = useState(null);   // deal pending confirmation
+  const [undoSnack, setUndoSnack] = useState(null);         // { deal, timer }
+  const undoTimerRef = useRef(null);
+
   // Prevent initial flicker
   useEffect(() => {
     setMounted(true);
@@ -1107,25 +1112,44 @@ export default memo(function OptimizedDecisionEngine() {
     }
   }, [loadData]);
 
-  // Delete deal handler (ADMIN only)
-  const handleDelete = useCallback(async (deal) => {
-    const role = getRole();
-    if (role !== 'ADMIN') {
-      alert('Only ADMIN can delete deals');
-      return;
-    }
+  // Delete — step 1: show confirmation modal (no action yet)
+  const handleDelete = useCallback((deal) => {
+    setDeleteTarget(deal);
+  }, []);
+
+  // Delete — step 2: confirmed → soft-delete + show undo snackbar (5 s)
+  const handleDeleteConfirmed = useCallback(async () => {
+    const deal = deleteTarget;
+    setDeleteTarget(null);
+    if (!deal) return;
+
     try {
-      const result = await deleteDeal(deal.id);
+      await deleteDeal(deal.id);
       await loadData();
-      if (selectedDealRef.current?.id === deal.id) {
-        setSelectedDeal(null);
-      }
-    } catch (error) {
-      console.error('Failed to delete deal:', error);
-      const errorMessage = error?.detail || error?.message || JSON.stringify(error);
-      alert(`Failed to delete deal: ${errorMessage}`);
+      if (selectedDealRef.current?.id === deal.id) setSelectedDeal(null);
+
+      // Show 5-second undo snackbar
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      setUndoSnack(deal);
+      undoTimerRef.current = setTimeout(() => setUndoSnack(null), 5000);
+    } catch (err) {
+      setError(err?.detail || err?.message || 'Failed to delete deal');
     }
-  }, [loadData]);
+  }, [deleteTarget, loadData]);
+
+  // Delete — undo: restore the deal within 5-second window
+  const handleUndoDelete = useCallback(async () => {
+    const deal = undoSnack;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoSnack(null);
+    if (!deal) return;
+    try {
+      await fetch(`/api/v1/deals/${deal.id}/restore`, { method: 'POST', credentials: 'include' });
+      await loadData();
+    } catch (err) {
+      setError('Failed to undo delete — contact admin');
+    }
+  }, [undoSnack, loadData]);
 
   // Keyboard shortcuts - optimized
   useEffect(() => {
@@ -1178,6 +1202,73 @@ export default memo(function OptimizedDecisionEngine() {
       borderRadius: isMobile ? 0 : '8px',
     }}>
       <style>{premiumStyles}</style>
+
+      {/* ── Delete confirmation modal ── */}
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9000,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '16px',
+        }} onClick={() => setDeleteTarget(null)}>
+          <div style={{
+            background: '#1a1f2e', border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: '14px', padding: '28px 24px', maxWidth: '360px', width: '100%',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#e6edf3', marginBottom: '8px' }}>
+              Delete this deal?
+            </div>
+            <div style={{ fontSize: '13px', color: '#9ba7b4', marginBottom: '6px', lineHeight: 1.5 }}>
+              <strong style={{ color: '#e6edf3' }}>{deleteTarget.customer_name}</strong>
+              {' — '}{deleteTarget.variant}
+            </div>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '24px', lineHeight: 1.5 }}>
+              This deal will be moved to trash. You have 5 seconds to undo after deletion.
+              Data is never permanently lost — admins can restore it anytime.
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setDeleteTarget(null)} style={{
+                flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                background: 'transparent', color: '#9ba7b4', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteConfirmed} style={{
+                flex: 1, padding: '11px', borderRadius: '8px', border: 'none',
+                background: '#ef4444', color: '#fff', fontSize: '13px', fontWeight: 700,
+                cursor: 'pointer',
+              }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Undo snackbar (5-second window) ── */}
+      {undoSnack && (
+        <div style={{
+          position: 'fixed', bottom: isMobile ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '24px',
+          left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9001, display: 'flex', alignItems: 'center', gap: '16px',
+          background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: '10px', padding: '12px 18px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          fontSize: '13px', fontWeight: 500, color: '#e6edf3',
+          whiteSpace: 'nowrap',
+        }}>
+          <span>Deal deleted</span>
+          <button onClick={handleUndoDelete} style={{
+            padding: '5px 14px', borderRadius: '6px', border: 'none',
+            background: '#6366f1', color: '#fff', fontSize: '12px', fontWeight: 700,
+            cursor: 'pointer',
+          }}>
+            Undo
+          </button>
+        </div>
+      )}
 
       {error && (
         <div style={{
