@@ -20,6 +20,7 @@
  */
 
 import * as Sentry from '@sentry/react';
+import { enqueue, queueSize, initOfflineQueue } from './utils/offlineQueue';
 
 // ── Platform detection ────────────────────────────────────────────────────────
 // Capacitor sets window.Capacitor when running as a native app.
@@ -119,7 +120,21 @@ export function setRole(role) {
   localStorage.setItem('aegibit_role', role);
 }
 
-// ── Error class ───────────────────────────────────────────────────────────────
+// ── Error classes ─────────────────────────────────────────────────────────────
+
+/**
+ * Thrown by createDeal (and any future critical action) when the device is
+ * offline and the request has been persisted to the offline queue instead.
+ * Callers should treat this as a soft success ("queued") rather than a failure.
+ */
+export class QueuedError extends Error {
+  constructor(label, queueId) {
+    super(`"${label}" queued — will submit automatically when you're back online.`);
+    this.name     = 'QueuedError';
+    this.queueId  = queueId;
+    this.actionable = false;
+  }
+}
 
 export class ApiError extends Error {
   constructor(message, status = 0, actionable = true, requestId = null) {
@@ -162,7 +177,7 @@ function extractErrorMessage(json, fallback) {
 
 // ── Retry helpers ─────────────────────────────────────────────────────────────
 
-const RETRY_DELAYS = [300, 800];
+const RETRY_DELAYS = [500, 1500, 4000]; // exponential: ~0.5s → 1.5s → 4s
 
 function isRetryable(status) {
   return status === 0 || status >= 500;
@@ -415,6 +430,15 @@ export async function analyzeDeal(data) {
 }
 
 export async function createDeal(data) {
+  if (!navigator.onLine) {
+    const id = enqueue(
+      '/create-deal',
+      { method: 'POST', body: JSON.stringify(data) },
+      'Create Deal',
+    );
+    // Queue full → fall through and let the normal offline error surface
+    if (id) throw new QueuedError('Create Deal', id);
+  }
   return apiFetch('/create-deal', { method: 'POST', body: JSON.stringify(data) });
 }
 
@@ -538,6 +562,13 @@ export async function uploadPricing(file) {
     throw new ApiError('Upload failed. Check your connection.', 0, true, requestId);
   }
 }
+
+// ── Re-export queue utilities ─────────────────────────────────────────────────
+export { queueSize } from './utils/offlineQueue';
+
+// ── Wire offline queue: drain queued requests when connection is restored ──────
+// apiFetch is a function declaration (hoisted) so this is safe at module level.
+initOfflineQueue(apiFetch);
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 

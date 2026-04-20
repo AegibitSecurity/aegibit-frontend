@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { fetchVariants, analyzeDeal, createDeal } from '../api';
+import { fetchVariants, analyzeDeal, createDeal, QueuedError } from '../api';
 import EmailOtpVerification from './EmailOtpVerification';
 
 // West Bengal RTO data
@@ -298,7 +298,12 @@ export default memo(function CreateDeal({ onDealCreated }) {
       setAnalysis(null);
       onDealCreated?.(deal);
     } catch (e) {
-      console.error('Create deal error:', e);
+      // Offline queue: show as soft-success rather than an error
+      if (e instanceof QueuedError) {
+        setSuccess(e.message);
+        setSubmitting(false);
+        return;
+      }
       const err = e.detail || e.message;
       if (err && typeof err === 'object') {
         if (Array.isArray(err)) {

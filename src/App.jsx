@@ -71,6 +71,8 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [queueSize, setQueueSize] = useState(0);
+  const [drainMsg, setDrainMsg] = useState('');
 
   const isMobile = useIsMobile();
   const currentUser = getUser();
@@ -160,6 +162,26 @@ export default function App() {
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
   }, []);
 
+  // Offline queue status listeners
+  useEffect(() => {
+    const onChange  = (e) => setQueueSize(e.detail.size);
+    const onDrained = (e) => {
+      setQueueSize(e.detail.failed);
+      if (e.detail.succeeded > 0) {
+        const s = e.detail.succeeded;
+        setDrainMsg(`${s} queued deal${s > 1 ? 's' : ''} submitted successfully`);
+        setRefreshKey(k => k + 1);
+        setTimeout(() => setDrainMsg(''), 5000);
+      }
+    };
+    window.addEventListener('offlineQueueChanged', onChange);
+    window.addEventListener('offlineQueueDrained', onDrained);
+    return () => {
+      window.removeEventListener('offlineQueueChanged', onChange);
+      window.removeEventListener('offlineQueueDrained', onDrained);
+    };
+  }, []);
+
   useEffect(() => { themeManager.init(); }, []);
 
   useEffect(() => {
@@ -206,7 +228,19 @@ export default function App() {
           padding: '8px 16px', fontSize: '13px', fontWeight: 600,
           letterSpacing: '0.01em',
         }}>
-          You are offline — changes will not be saved
+          {queueSize > 0
+            ? `You are offline — ${queueSize} deal${queueSize > 1 ? 's' : ''} queued, will submit when online`
+            : 'You are offline — changes will not be saved'}
+        </div>
+      )}
+      {drainMsg && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#22c55e', color: '#fff', textAlign: 'center',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600,
+          letterSpacing: '0.01em',
+        }}>
+          {drainMsg}
         </div>
       )}
       {/* Global non-blocking error banner */}
