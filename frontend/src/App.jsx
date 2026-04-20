@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
+import MobileTopBar from './components/MobileTopBar';
 import LoginPage from './components/LoginPage';
 import ToastContainer from './components/ToastContainer';
 import AppError from './components/AppError';
 import { themeManager } from './utils/theme';
-import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken } from './api';
+import { useIsMobile } from './hooks/useIsMobile';
+import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken, fetchDashboard, getOrgId } from './api';
 
 const OptimizedDecisionEngine = lazy(() => import('./components/OptimizedDecisionEngine'));
 const OptimizedCreateDeal     = lazy(() => import('./components/OptimizedCreateDeal'));
@@ -67,7 +70,11 @@ export default function App() {
   const [pendingCount, setPendingCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [queueSize, setQueueSize] = useState(0);
+  const [drainMsg, setDrainMsg] = useState('');
 
+  const isMobile = useIsMobile();
   const currentUser = getUser();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -128,9 +135,51 @@ export default function App() {
   const handleWsDealEvent  = useCallback(() => setRefreshKey(k => k + 1), []);
   const handleWsTaskEvent  = useCallback(() => setRefreshKey(k => k + 1), []);
 
+  // Poll pending count on mobile (Sidebar handles this on desktop)
+  useEffect(() => {
+    if (!authed || !isMobile) return;
+    function poll() {
+      if (!getOrgId()) return;
+      fetchDashboard()
+        .then((s) => setPendingCount(s.pending_gm_tasks + s.pending_director_tasks))
+        .catch(() => {});
+    }
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => clearInterval(id);
+  }, [authed, isMobile]);
+
   const handleNavigate = useCallback((view) => {
     setActiveView(view);
     setSidebarOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const up = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
+
+  // Offline queue status listeners
+  useEffect(() => {
+    const onChange  = (e) => setQueueSize(e.detail.size);
+    const onDrained = (e) => {
+      setQueueSize(e.detail.failed);
+      if (e.detail.succeeded > 0) {
+        const s = e.detail.succeeded;
+        setDrainMsg(`${s} queued deal${s > 1 ? 's' : ''} submitted successfully`);
+        setRefreshKey(k => k + 1);
+        setTimeout(() => setDrainMsg(''), 5000);
+      }
+    };
+    window.addEventListener('offlineQueueChanged', onChange);
+    window.addEventListener('offlineQueueDrained', onDrained);
+    return () => {
+      window.removeEventListener('offlineQueueChanged', onChange);
+      window.removeEventListener('offlineQueueDrained', onDrained);
+    };
   }, []);
 
   useEffect(() => { themeManager.init(); }, []);
@@ -172,10 +221,32 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      {/* Global non-blocking error banner (server down, permission denied, etc.) */}
+      {!isOnline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#f59e0b', color: '#000', textAlign: 'center',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600,
+          letterSpacing: '0.01em',
+        }}>
+          {queueSize > 0
+            ? `You are offline — ${queueSize} deal${queueSize > 1 ? 's' : ''} queued, will submit when online`
+            : 'You are offline — changes will not be saved'}
+        </div>
+      )}
+      {drainMsg && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#22c55e', color: '#fff', textAlign: 'center',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600,
+          letterSpacing: '0.01em',
+        }}>
+          {drainMsg}
+        </div>
+      )}
+      {/* Global non-blocking error banner */}
       <AppError />
 
-      {/* Mobile hamburger button */}
+      {/* Desktop/Tablet: sidebar + hamburger (hidden on mobile via CSS) */}
       <button
         className="mobile-menu-btn"
         onClick={() => setSidebarOpen(o => !o)}
@@ -184,28 +255,45 @@ export default function App() {
       >
         {sidebarOpen ? '✕' : '☰'}
       </button>
-
-      {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
+      {!isMobile && (
+        <Sidebar
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          pendingCount={pendingCount}
+          onOrgChange={handleOrgChange}
+          onPendingCount={setPendingCount}
+          isOpen={sidebarOpen}
+          onLogout={handleLogout}
+          isAdmin={isAdmin}
+        />
+      )}
 
-      <Sidebar
-        activeView={activeView}
-        onNavigate={handleNavigate}
-        pendingCount={pendingCount}
-        onOrgChange={handleOrgChange}
-        onPendingCount={setPendingCount}
-        isOpen={sidebarOpen}
-        onLogout={handleLogout}
-        isAdmin={isAdmin}
-      />
       <main className="app-main" id="main-content">
+        {/* Mobile-only top bar (org switcher, notifications, profile) */}
+        {isMobile && (
+          <MobileTopBar
+            onOrgChange={handleOrgChange}
+            onLogout={handleLogout}
+            onPendingCount={setPendingCount}
+          />
+        )}
         <Suspense fallback={<ViewLoader />}>
           {renderView()}
         </Suspense>
       </main>
+
+      {/* Mobile-only bottom navigation */}
+      {isMobile && (
+        <BottomNav
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          pendingCount={pendingCount}
+        />
+      )}
 
       {/* Real-time WebSocket toast notifications */}
       <ToastContainer

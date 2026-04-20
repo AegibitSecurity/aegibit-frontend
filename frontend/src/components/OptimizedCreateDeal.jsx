@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { fetchVariants, analyzeDeal, createDeal } from '../api';
+import { fetchVariants, analyzeDeal, createDeal, QueuedError } from '../api';
 import EmailOtpVerification from './EmailOtpVerification';
 
 // West Bengal RTO data
@@ -298,7 +298,12 @@ export default memo(function CreateDeal({ onDealCreated }) {
       setAnalysis(null);
       onDealCreated?.(deal);
     } catch (e) {
-      console.error('Create deal error:', e);
+      // Offline queue: show as soft-success rather than an error
+      if (e instanceof QueuedError) {
+        setSuccess(e.message);
+        setSubmitting(false);
+        return;
+      }
       const err = e.detail || e.message;
       if (err && typeof err === 'object') {
         if (Array.isArray(err)) {
@@ -332,7 +337,7 @@ export default memo(function CreateDeal({ onDealCreated }) {
   return (
     <div>
       <div className="page-header">
-        <h2>⚡ Create Deal</h2>
+        <h2>Create Deal</h2>
         <p>Enter deal details for instant analysis and routing</p>
       </div>
 
@@ -374,6 +379,8 @@ export default memo(function CreateDeal({ onDealCreated }) {
             onVerifiedChange={handleVerificationChange}
             disabled={submitting}
           />
+
+          <div className="form-section-title">Vehicle</div>
 
           <div className="form-row">
             <div className="form-group">
@@ -433,7 +440,7 @@ export default memo(function CreateDeal({ onDealCreated }) {
                     setShowAutocomplete(true);
                   }
                 }}
-                onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
+                onBlur={() => setTimeout(() => setShowAutocomplete(false), 300)}
                 autoComplete="off"
               />
               {showAutocomplete && (
@@ -442,7 +449,7 @@ export default memo(function CreateDeal({ onDealCreated }) {
                     <div
                       key={v.variant}
                       className={`autocomplete-item ${i === highlightIndex ? 'highlighted' : ''}`}
-                      onMouseDown={() => selectVariant(v)}
+                      onPointerDown={(e) => { e.preventDefault(); selectVariant(v); }}
                     >
                       {v.variant}
                       <span className="autocomplete-item-price">
@@ -490,6 +497,8 @@ export default memo(function CreateDeal({ onDealCreated }) {
             </div>
           </div>
 
+          <div className="form-section-title">Registration & RTO</div>
+
           <div className="form-row">
             <div className="form-group">
               <label className="form-label" htmlFor="rto-select">RTO Office *</label>
@@ -527,19 +536,20 @@ export default memo(function CreateDeal({ onDealCreated }) {
             </div>
           </div>
 
+          <div className="form-group">
+            <label className="form-label" htmlFor="address">Address *</label>
+            <input
+              id="address"
+              className="form-input"
+              type="text"
+              placeholder="Enter address"
+              value={form.address}
+              onChange={(e) => handleChange('address', e.target.value)}
+              required
+            />
+          </div>
+
           <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="address">Address *</label>
-              <input
-                id="address"
-                className="form-input"
-                type="text"
-                placeholder="Enter address"
-                value={form.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                required
-              />
-            </div>
             <div className="form-group">
               <label className="form-label" htmlFor="aadhaar">Aadhaar *</label>
               <input
@@ -620,6 +630,8 @@ export default memo(function CreateDeal({ onDealCreated }) {
             </div>
           </div>
 
+          <div className="form-section-title">Finance</div>
+
           <div className="form-row">
             <div className="form-group">
               <label className="form-label" htmlFor="sale-type">Sale Type *</label>
@@ -677,6 +689,8 @@ export default memo(function CreateDeal({ onDealCreated }) {
               </div>
             </div>
           )}
+
+          <div className="form-section-title">Sales & CRM</div>
 
           <div className="form-row">
             <div className="form-group">
@@ -758,13 +772,13 @@ export default memo(function CreateDeal({ onDealCreated }) {
           </div>
 
           {error && (
-            <div style={{ color: 'var(--risk-high)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
-              ❌ {error}
+            <div style={{ color: 'var(--risk-high)', fontSize: '0.875rem', marginBottom: 'var(--space-md)', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
+              {error}
             </div>
           )}
           {success && (
-            <div style={{ color: 'var(--risk-low)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
-              ✅ {success}
+            <div style={{ color: 'var(--risk-low)', fontSize: '0.875rem', marginBottom: 'var(--space-md)', padding: '10px 14px', background: 'rgba(34,197,94,0.08)', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}>
+              {success}
             </div>
           )}
 
@@ -802,7 +816,7 @@ export default memo(function CreateDeal({ onDealCreated }) {
 
               <div className="analysis-decision">
                 <span className="analysis-decision-icon">
-                  {analysis.decision === 'AUTO_APPROVE' ? '✅' : analysis.decision === 'GM_APPROVAL' ? '⚠️' : '🚨'}
+                  {analysis.decision === 'AUTO_APPROVE' ? '✓' : analysis.decision === 'GM_APPROVAL' ? '!' : '!!'}
                 </span>
                 <div className="analysis-decision-text">
                   <strong>
@@ -819,10 +833,9 @@ export default memo(function CreateDeal({ onDealCreated }) {
           )}
 
           {analyzing && (
-            <div className="analysis-panel" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', opacity: 0.3 }}>📊</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 'var(--space-sm)' }}>
-                Analyzing deal...
+            <div className="analysis-panel" style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                Analyzing deal…
               </div>
             </div>
           )}
@@ -837,9 +850,9 @@ export default memo(function CreateDeal({ onDealCreated }) {
             {submitting ? (
               <><span className="loading-spinner" /> Processing...</>
             ) : !canProceed ? (
-              '🔒 Verify Phone to Create Deal'
+              'Verify Phone to Submit'
             ) : (
-              '⚡ Create Deal'
+              'Submit Deal'
             )}
           </button>
         </div>

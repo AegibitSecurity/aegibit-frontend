@@ -24,16 +24,7 @@ export default function UploadPricing() {
       setFile(null);
       if (inputRef.current) inputRef.current.value = '';
     } catch (e) {
-      console.error('Upload error details:', {
-        message: e.message,
-        stack: e.stack,
-        name: e.name,
-        toString: e.toString(),
-        fullError: e
-      });
-      
-      const errorMessage = e.message || e.toString() || 'Upload failed';
-      setError(errorMessage);
+      setError(e.message || 'Upload failed');
     }
 
     setUploading(false);
@@ -42,7 +33,7 @@ export default function UploadPricing() {
   return (
     <div>
       <div className="page-header">
-        <h2>📁 Upload Pricing</h2>
+        <h2>Upload Pricing</h2>
         <p>Upload an Excel spreadsheet to update vehicle pricing data</p>
       </div>
 
@@ -65,13 +56,13 @@ export default function UploadPricing() {
         </div>
 
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
-          📋 Expected format: headers at <strong>row 11</strong>, data from <strong>row 13</strong>. 
+          Expected format: headers at <strong>row 11</strong>, data from <strong>row 13</strong>.
           Columns: Variant, Ex-Showroom Price, 5yr, 15yr, BH (fuzzy-matched).
         </div>
 
         {error && (
-          <div style={{ color: 'var(--risk-high)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
-            ❌ {error}
+          <div style={{ color: 'var(--risk-high)', fontSize: '0.875rem', marginBottom: 'var(--space-md)', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
+            {error}
           </div>
         )}
 
@@ -85,7 +76,7 @@ export default function UploadPricing() {
           {uploading ? (
             <><span className="loading-spinner" /> Uploading...</>
           ) : (
-            '📤 Upload & Process'
+            'Upload & Process'
           )}
         </button>
 
@@ -112,7 +103,7 @@ export default function UploadPricing() {
             {result.errors?.length > 0 && (
               <div style={{ marginTop: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 {result.errors.map((e, i) => (
-                  <div key={i}>⚠️ {e}</div>
+                  <div key={i} style={{ marginBottom: '2px' }}>{e}</div>
                 ))}
               </div>
             )}
