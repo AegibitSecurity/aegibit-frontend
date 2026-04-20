@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
+import MobileTopBar from './components/MobileTopBar';
 import LoginPage from './components/LoginPage';
 import ToastContainer from './components/ToastContainer';
 import AppError from './components/AppError';
 import { themeManager } from './utils/theme';
-import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken } from './api';
+import { useIsMobile } from './hooks/useIsMobile';
+import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken, fetchDashboard, getOrgId } from './api';
 
 const OptimizedDecisionEngine = lazy(() => import('./components/OptimizedDecisionEngine'));
 const OptimizedCreateDeal     = lazy(() => import('./components/OptimizedCreateDeal'));
@@ -68,6 +71,7 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const isMobile = useIsMobile();
   const currentUser = getUser();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -128,6 +132,20 @@ export default function App() {
   const handleWsDealEvent  = useCallback(() => setRefreshKey(k => k + 1), []);
   const handleWsTaskEvent  = useCallback(() => setRefreshKey(k => k + 1), []);
 
+  // Poll pending count on mobile (Sidebar handles this on desktop)
+  useEffect(() => {
+    if (!authed || !isMobile) return;
+    function poll() {
+      if (!getOrgId()) return;
+      fetchDashboard()
+        .then((s) => setPendingCount(s.pending_gm_tasks + s.pending_director_tasks))
+        .catch(() => {});
+    }
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => clearInterval(id);
+  }, [authed, isMobile]);
+
   const handleNavigate = useCallback((view) => {
     setActiveView(view);
     setSidebarOpen(false);
@@ -172,10 +190,10 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      {/* Global non-blocking error banner (server down, permission denied, etc.) */}
+      {/* Global non-blocking error banner */}
       <AppError />
 
-      {/* Mobile hamburger button */}
+      {/* Desktop/Tablet: sidebar + hamburger (hidden on mobile via CSS) */}
       <button
         className="mobile-menu-btn"
         onClick={() => setSidebarOpen(o => !o)}
@@ -184,28 +202,45 @@ export default function App() {
       >
         {sidebarOpen ? '✕' : '☰'}
       </button>
-
-      {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
+      {!isMobile && (
+        <Sidebar
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          pendingCount={pendingCount}
+          onOrgChange={handleOrgChange}
+          onPendingCount={setPendingCount}
+          isOpen={sidebarOpen}
+          onLogout={handleLogout}
+          isAdmin={isAdmin}
+        />
+      )}
 
-      <Sidebar
-        activeView={activeView}
-        onNavigate={handleNavigate}
-        pendingCount={pendingCount}
-        onOrgChange={handleOrgChange}
-        onPendingCount={setPendingCount}
-        isOpen={sidebarOpen}
-        onLogout={handleLogout}
-        isAdmin={isAdmin}
-      />
       <main className="app-main" id="main-content">
+        {/* Mobile-only top bar (org switcher, notifications, profile) */}
+        {isMobile && (
+          <MobileTopBar
+            onOrgChange={handleOrgChange}
+            onLogout={handleLogout}
+            onPendingCount={setPendingCount}
+          />
+        )}
         <Suspense fallback={<ViewLoader />}>
           {renderView()}
         </Suspense>
       </main>
+
+      {/* Mobile-only bottom navigation */}
+      {isMobile && (
+        <BottomNav
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          pendingCount={pendingCount}
+        />
+      )}
 
       {/* Real-time WebSocket toast notifications */}
       <ToastContainer

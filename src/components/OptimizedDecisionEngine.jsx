@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { fetchDashboard, fetchDeals, approveGM, approveDirector, rejectDeal, deleteDeal, getOrgId, getRole } from '../api';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // ─── Injected Premium Styles ────────────────────────────────────────────────
 const premiumStyles = `
@@ -136,7 +137,88 @@ const premiumStyles = `
 
   /* ── Panel enter animation ──────────────────────────────────────────── */
   .ode-panel-enter { animation: ode-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+  /* ── Mobile deal card ───────────────────────────────────────────────── */
+  .ode-deal-card {
+    margin: 8px 12px;
+    background: var(--ode-glass);
+    border: 1px solid var(--ode-border);
+    border-radius: var(--ode-radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ode-deal-card.ode-active {
+    border-color: var(--ode-accent);
+    background: rgba(99,102,241,0.08);
+  }
+  .ode-deal-card:active { transform: scale(0.98); }
+
+  /* ── Mobile bottom sheet (analysis) ────────────────────────────────── */
+  .ode-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 450;
+    display: flex;
+    align-items: flex-end;
+    animation: fadeIn 150ms ease-out;
+  }
+  .ode-sheet {
+    width: 100%;
+    background: var(--ode-bg-secondary);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--ode-border-strong);
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: ode-sheet-up 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  @keyframes ode-sheet-up {
+    from { transform: translateY(100%); opacity: 0.5; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  .ode-sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--ode-border-strong);
+    border-radius: 9999px;
+    margin: 12px auto 8px;
+  }
+
+  /* ── Touch-safe buttons (min 44px) ─────────────────────────────────── */
+  .ode-btn-touch {
+    min-height: 44px !important;
+    flex: 1;
+  }
 `;
+
+// ─── Shared badge helpers ────────────────────────────────────────────────────
+const RiskBadge = ({ risk }) => (
+  <span style={{
+    padding: '3px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 700,
+    textTransform: 'uppercase', letterSpacing: '0.04em', display: 'inline-flex', alignItems: 'center', gap: 5,
+    background: risk === 'HIGH' ? 'var(--ode-red-soft)' : risk === 'MEDIUM' ? 'var(--ode-yellow-soft)' : 'var(--ode-green-soft)',
+    color: risk === 'HIGH' ? 'var(--ode-red)' : risk === 'MEDIUM' ? 'var(--ode-yellow)' : 'var(--ode-green)',
+    border: `1px solid ${risk === 'HIGH' ? 'rgba(239,68,68,0.2)' : risk === 'MEDIUM' ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
+  }}>
+    <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+    {risk || 'LOW'}
+  </span>
+);
+
+const StatusBadge = ({ status }) => (
+  <span style={{
+    padding: '3px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 700,
+    textTransform: 'uppercase', letterSpacing: '0.04em',
+    background: status === 'APPROVED' ? 'var(--ode-green-soft)' : status === 'REJECTED' ? 'var(--ode-red-soft)' : 'var(--ode-yellow-soft)',
+    color: status === 'APPROVED' ? 'var(--ode-green)' : status === 'REJECTED' ? 'var(--ode-red)' : 'var(--ode-yellow)',
+    border: `1px solid ${status === 'APPROVED' ? 'rgba(34,197,94,0.2)' : status === 'REJECTED' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,
+  }}>
+    {status}
+  </span>
+);
 
 // ─── SVG Icons ──────────────────────────────────────────────────────────────
 const Ico = {
@@ -275,15 +357,20 @@ const TopBar = memo(({ orgName, userRole, currentTime, pendingCount }) => (
 ));
 
 // ─── Memoized KPI Cards ─────────────────────────────────────────────────────
-const KPICards = memo(({ stats, loading }) => {
+const KPICards = memo(({ stats, loading, isMobile }) => {
+  const cols = isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)';
+  const pad  = isMobile ? '12px 12px' : '18px 24px';
+
   if (loading) {
     return (
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px',
-        padding: '18px 24px', borderBottom: '1px solid var(--ode-border)',
+        display: 'grid', gridTemplateColumns: cols, gap: isMobile ? '8px' : '14px',
+        padding: pad, borderBottom: '1px solid var(--ode-border)',
       }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="ode-skel" style={{ height: '88px' }} />
+          <div key={i} className="ode-skel"
+            style={{ height: isMobile ? '72px' : '88px', gridColumn: isMobile && i === 4 ? 'span 2' : undefined }}
+          />
         ))}
       </div>
     );
@@ -291,39 +378,42 @@ const KPICards = memo(({ stats, loading }) => {
 
   const kpis = [
     { title: 'Deals Today', value: stats?.total_deals || 0, color: 'var(--ode-text)' },
-    { title: 'Pending', value: stats?.pending || 0, color: stats?.pending > 0 ? 'var(--ode-yellow)' : 'var(--ode-green)' },
-    { title: 'High Risk', value: stats?.high_risk || 0, color: stats?.high_risk > 0 ? 'var(--ode-red)' : 'var(--ode-green)' },
-    { title: 'Avg Margin', value: stats?.avg_margin ? `${Number(stats.avg_margin).toFixed(1)}%` : '0%', color: 'var(--ode-text)' },
-    { title: 'Revenue', value: formatCurrency(stats?.revenue_today || 0), color: 'var(--ode-text)' }
+    { title: 'Pending',     value: stats?.pending || 0,     color: stats?.pending > 0 ? 'var(--ode-yellow)' : 'var(--ode-green)' },
+    { title: 'High Risk',   value: stats?.high_risk || 0,   color: stats?.high_risk > 0 ? 'var(--ode-red)' : 'var(--ode-green)' },
+    { title: 'Avg Margin',  value: stats?.avg_margin ? `${Number(stats.avg_margin).toFixed(1)}%` : '0%', color: 'var(--ode-text)' },
+    { title: 'Revenue',     value: formatCurrency(stats?.revenue_today || 0), color: 'var(--ode-text)' },
   ];
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px',
-      padding: '18px 24px',
+      display: 'grid', gridTemplateColumns: cols, gap: isMobile ? '8px' : '14px',
+      padding: pad,
       background: 'linear-gradient(180deg, rgba(255,255,255,0.012), transparent)',
       borderBottom: '1px solid var(--ode-border)',
     }}>
       {kpis.map((kpi, i) => (
         <div key={i} className="ode-kpi" style={{
           background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
-          borderRadius: 'var(--ode-radius)', padding: '16px 18px', cursor: 'pointer',
+          borderRadius: 'var(--ode-radius)', padding: isMobile ? '12px 14px' : '16px 18px', cursor: 'pointer',
+          gridColumn: isMobile && i === 4 ? 'span 2' : undefined,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <div style={{ fontSize: '10px', color: 'var(--ode-text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontSize: '9px', color: 'var(--ode-text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {kpi.title}
             </div>
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '7px',
-              background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--ode-text-dim)',
-            }}>
-              {kpiIcons[i]}
-            </div>
+            {!isMobile && (
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '7px',
+                background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--ode-text-dim)',
+              }}>
+                {kpiIcons[i]}
+              </div>
+            )}
           </div>
           <div style={{
-            fontSize: '26px', fontWeight: 800, color: kpi.color,
+            fontSize: isMobile ? '22px' : '26px', fontWeight: 800, color: kpi.color,
             lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
           }}>
             {kpi.value}
@@ -335,12 +425,12 @@ const KPICards = memo(({ stats, loading }) => {
 });
 
 // ─── Memoized Deal Stream ───────────────────────────────────────────────────
-const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDelete, userRole, loading }) => {
+const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDelete, userRole, loading, isMobile }) => {
   if (loading) {
     return (
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px' }}>
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="ode-skel" style={{ height: '52px', marginBottom: '6px' }} />
+          <div key={i} className="ode-skel" style={{ height: isMobile ? '88px' : '52px', marginBottom: isMobile ? '8px' : '6px', borderRadius: 'var(--ode-radius)' }} />
         ))}
       </div>
     );
@@ -351,34 +441,139 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
     textTransform: 'uppercase', letterSpacing: '0.1em',
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Section header */}
-      <div style={{
-        padding: '14px 24px', borderBottom: '1px solid var(--ode-border)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.015), transparent)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ color: 'var(--ode-accent)', display: 'flex' }}>{Ico.layers}</span>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ode-text)', letterSpacing: '-0.02em' }}>
-            Live Deals
-          </span>
-          <span style={{
-            background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
-            borderRadius: '10px', padding: '1px 9px', fontSize: '11px',
-            fontWeight: 700, color: 'var(--ode-text-dim)', fontVariantNumeric: 'tabular-nums',
-          }}>
-            {deals.length}
-          </span>
+  // ── Section header (shared) ─────────────────────────────────────────────────
+  const sectionHeader = (
+    <div style={{
+      padding: isMobile ? '12px 12px' : '14px 24px',
+      borderBottom: '1px solid var(--ode-border)',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      background: 'linear-gradient(180deg, rgba(255,255,255,0.015), transparent)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ color: 'var(--ode-accent)', display: 'flex' }}>{Ico.layers}</span>
+        <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ode-text)', letterSpacing: '-0.02em' }}>
+          Live Deals
+        </span>
+        <span style={{
+          background: 'var(--ode-glass)', border: '1px solid var(--ode-border)',
+          borderRadius: '10px', padding: '1px 9px', fontSize: '11px',
+          fontWeight: 700, color: 'var(--ode-text-dim)', fontVariantNumeric: 'tabular-nums',
+        }}>
+          {deals.length}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: 'var(--ode-text-dim)' }}>
+        <div style={{ position: 'relative', width: '6px', height: '6px' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--ode-green)', borderRadius: '50%', animation: 'ode-pulse 2s ease-in-out infinite' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: 'var(--ode-text-dim)' }}>
-          <div style={{ position: 'relative', width: '6px', height: '6px' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'var(--ode-green)', borderRadius: '50%', animation: 'ode-pulse 2s ease-in-out infinite' }} />
-          </div>
-          <span style={{ fontWeight: 500 }}>Real-time</span>
+        <span style={{ fontWeight: 500 }}>Real-time</span>
+      </div>
+    </div>
+  );
+
+  // ── MOBILE: card layout ─────────────────────────────────────────────────────
+  if (isMobile) {
+    const canAct = (deal) => (userRole === 'GM' || userRole === 'DIRECTOR') && deal.status === 'PENDING';
+
+    return (
+      <div>
+        {sectionHeader}
+        <div style={{ paddingBottom: '8px' }}>
+          {deals.map((deal) => (
+            <div
+              key={deal.id}
+              className={`ode-deal-card${selectedDeal?.id === deal.id ? ' ode-active' : ''}`}
+              onClick={() => onDealSelect(deal)}
+            >
+              {/* Row 1: customer + price */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ode-text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {deal.customer_name}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ode-text-dim)' }}>
+                    {deal.model} · {deal.variant}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ode-text)', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatCurrency(deal.final_price)}
+                  </div>
+                  <div style={{
+                    fontSize: '12px', fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                    color: deal.margin_percent > 3 ? 'var(--ode-green)' : deal.margin_percent > 1 ? 'var(--ode-yellow)' : 'var(--ode-red)',
+                  }}>
+                    {deal.margin_percent?.toFixed(1)}% margin
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: badges + time */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: canAct(deal) || userRole === 'ADMIN' ? '12px' : 0 }}>
+                <RiskBadge risk={deal.risk_level} />
+                <StatusBadge status={deal.status} />
+                <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--ode-text-dim)' }}>
+                  {formatTimeAgo(deal.created_at)}
+                </div>
+              </div>
+
+              {/* Action buttons — 44px touch targets */}
+              {canAct(deal) && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="ode-btn ode-btn-green ode-btn-touch"
+                    onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'approve'); }}
+                    style={{
+                      flex: 1, padding: '10px', minHeight: '44px',
+                      background: 'var(--ode-green-soft)', color: 'var(--ode-green)',
+                      border: '1px solid rgba(34,197,94,0.25)', borderRadius: '8px',
+                      fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}
+                  >
+                    {Ico.check} Approve
+                  </button>
+                  <button
+                    className="ode-btn ode-btn-red ode-btn-touch"
+                    onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'reject'); }}
+                    style={{
+                      flex: 1, padding: '10px', minHeight: '44px',
+                      background: 'var(--ode-red-soft)', color: 'var(--ode-red)',
+                      border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px',
+                      fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}
+                  >
+                    {Ico.x} Reject
+                  </button>
+                </div>
+              )}
+              {userRole === 'ADMIN' && (
+                <button
+                  className="ode-btn ode-btn-delete ode-btn-touch"
+                  onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this deal?')) { onDelete?.(deal); } }}
+                  style={{
+                    width: '100%', padding: '10px', minHeight: '44px',
+                    background: 'var(--ode-red-soft)', color: 'var(--ode-red)',
+                    border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}
+                >
+                  {Ico.trash} Delete Deal
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
+    );
+  }
+
+  // ── DESKTOP: table layout (unchanged) ──────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {sectionHeader}
 
       {/* Sticky table header */}
       <div style={{
@@ -388,12 +583,9 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
         position: 'sticky', top: 0, zIndex: 5,
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
       }}>
-        <div style={thStyle}>Customer</div>
-        <div style={{ ...thStyle, textAlign: 'right' }}>Price</div>
-        <div style={{ ...thStyle, textAlign: 'center' }}>Margin</div>
-        <div style={{ ...thStyle, textAlign: 'center' }}>Risk</div>
-        <div style={{ ...thStyle, textAlign: 'center' }}>Status</div>
-        <div style={{ ...thStyle, textAlign: 'right' }}>Time</div>
+        {['Customer', 'Price', 'Margin', 'Risk', 'Status', 'Time'].map((h, i) => (
+          <div key={h} style={{ ...thStyle, textAlign: i === 0 ? 'left' : i === 1 ? 'right' : 'center' }}>{h}</div>
+        ))}
       </div>
 
       {/* Rows */}
@@ -410,11 +602,7 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
             }}
             onClick={() => onDealSelect(deal)}
           >
-            <div style={{
-              display: 'grid', gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.7fr 0.8fr',
-              gap: '12px', alignItems: 'center',
-            }}>
-              {/* Customer */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 0.8fr 0.7fr 0.7fr 0.8fr', gap: '12px', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ode-text)', marginBottom: '1px', letterSpacing: '-0.01em' }}>
                   {deal.customer_name}
@@ -423,15 +611,11 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
                   {deal.model} · {deal.variant}
                 </div>
               </div>
-
-              {/* Price */}
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ode-text)', fontVariantNumeric: 'tabular-nums' }}>
                   {formatCurrency(deal.final_price)}
                 </div>
               </div>
-
-              {/* Margin */}
               <div style={{ textAlign: 'center' }}>
                 <div style={{
                   fontSize: '13px', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
@@ -440,83 +624,29 @@ const DealStream = memo(({ deals, selectedDeal, onDealSelect, onDealAction, onDe
                   {deal.margin_percent?.toFixed(1)}%
                 </div>
               </div>
-
-              {/* Risk */}
-              <div style={{ textAlign: 'center' }}>
-                <span style={{
-                  padding: '2px 8px', borderRadius: '12px', fontSize: '9px', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.04em',
-                  background: deal.risk_level === 'HIGH' ? 'var(--ode-red-soft)' :
-                    deal.risk_level === 'MEDIUM' ? 'var(--ode-yellow-soft)' : 'var(--ode-green-soft)',
-                  color: deal.risk_level === 'HIGH' ? 'var(--ode-red)' :
-                    deal.risk_level === 'MEDIUM' ? 'var(--ode-yellow)' : 'var(--ode-green)',
-                  border: `1px solid ${deal.risk_level === 'HIGH' ? 'rgba(239,68,68,0.2)' :
-                    deal.risk_level === 'MEDIUM' ? 'rgba(245,158,11,0.2)' : 'rgba(34,197,94,0.2)'}`,
-                }}>
-                  {deal.risk_level || 'LOW'}
-                </span>
-              </div>
-
-              {/* Status */}
-              <div style={{ textAlign: 'center' }}>
-                <span style={{
-                  padding: '2px 8px', borderRadius: '12px', fontSize: '9px', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.04em',
-                  background: deal.status === 'APPROVED' ? 'var(--ode-green-soft)' :
-                    deal.status === 'REJECTED' ? 'var(--ode-red-soft)' : 'var(--ode-yellow-soft)',
-                  color: deal.status === 'APPROVED' ? 'var(--ode-green)' :
-                    deal.status === 'REJECTED' ? 'var(--ode-red)' : 'var(--ode-yellow)',
-                  border: `1px solid ${deal.status === 'APPROVED' ? 'rgba(34,197,94,0.2)' :
-                    deal.status === 'REJECTED' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,
-                }}>
-                  {deal.status}
-                </span>
-              </div>
-
-              {/* Time */}
+              <div style={{ textAlign: 'center' }}><RiskBadge risk={deal.risk_level} /></div>
+              <div style={{ textAlign: 'center' }}><StatusBadge status={deal.status} /></div>
               <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--ode-text-dim)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
                 {formatTimeAgo(deal.created_at)}
               </div>
             </div>
 
-            {/* Inline action buttons */}
             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '10px' }}>
               {(userRole === 'GM' || userRole === 'DIRECTOR') && deal.status === 'PENDING' && (
                 <>
-                  <button
-                    className="ode-btn ode-btn-green"
-                    onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'approve'); }}
-                    style={{
-                      padding: '4px 14px', background: 'var(--ode-green-soft)', color: 'var(--ode-green)',
-                      border: '1px solid rgba(34,197,94,0.25)', borderRadius: '6px',
-                      fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                    }}
-                  >
+                  <button className="ode-btn ode-btn-green" onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'approve'); }}
+                    style={{ padding: '4px 14px', background: 'var(--ode-green-soft)', color: 'var(--ode-green)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {Ico.check} Approve
                   </button>
-                  <button
-                    className="ode-btn ode-btn-red"
-                    onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'reject'); }}
-                    style={{
-                      padding: '4px 14px', background: 'var(--ode-red-soft)', color: 'var(--ode-red)',
-                      border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px',
-                      fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                    }}
-                  >
+                  <button className="ode-btn ode-btn-red" onClick={(e) => { e.stopPropagation(); onDealAction(deal, 'reject'); }}
+                    style={{ padding: '4px 14px', background: 'var(--ode-red-soft)', color: 'var(--ode-red)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {Ico.x} Reject
                   </button>
                 </>
               )}
               {userRole === 'ADMIN' && (
-                <button
-                  className="ode-btn ode-btn-delete"
-                  onClick={(e) => { e.stopPropagation(); if (window.confirm('Are you sure? This can be restored later.')) { onDelete?.(deal); } }}
-                  style={{
-                    padding: '4px 14px', background: 'var(--ode-red-soft)', color: 'var(--ode-red)',
-                    border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px',
-                    fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                  }}
-                >
+                <button className="ode-btn ode-btn-delete" onClick={(e) => { e.stopPropagation(); if (window.confirm('Are you sure? This can be restored later.')) { onDelete?.(deal); } }}
+                  style={{ padding: '4px 14px', background: 'var(--ode-red-soft)', color: 'var(--ode-red)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {Ico.trash} Delete
                 </button>
               )}
@@ -758,6 +888,7 @@ const AnalysisPanel = memo(({ selectedDeal, userRole, onDealAction }) => {
 
 // ─── Main Optimized Component ───────────────────────────────────────────────
 export default memo(function OptimizedDecisionEngine() {
+  const isMobile = useIsMobile();
   const [orgName, setOrgName] = useState(localStorage.getItem('aegibit_org_name') || '');
   const userRole = getRole();
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -939,10 +1070,12 @@ export default memo(function OptimizedDecisionEngine() {
 
   return (
     <div className="ode-root" style={{
-      height: '100%', background: 'var(--ode-bg)', color: 'var(--ode-text)',
-      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      height: isMobile ? 'auto' : '100%',
+      background: 'var(--ode-bg)', color: 'var(--ode-text)',
+      display: 'flex', flexDirection: 'column',
+      overflow: isMobile ? 'visible' : 'hidden',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      borderRadius: '8px',
+      borderRadius: isMobile ? 0 : '8px',
     }}>
       <style>{premiumStyles}</style>
 
@@ -955,21 +1088,32 @@ export default memo(function OptimizedDecisionEngine() {
           {Ico.alert} {error}
         </div>
       )}
-      
-      <TopBar 
-        orgName={orgName || 'No Organization Selected'} 
-        userRole={userRole} 
-        currentTime={currentTime}
-        pendingCount={stats?.pending || 0}
-      />
-      
-      <KPICards 
-        stats={stats} 
-        loading={loading}
-      />
-      
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ flex: '0 0 68%', borderRight: '1px solid var(--ode-border)', overflow: 'auto' }}>
+
+      {/* TopBar: hidden on mobile — MobileTopBar in App.jsx provides this context */}
+      {!isMobile && (
+        <TopBar
+          orgName={orgName || 'No Organization Selected'}
+          userRole={userRole}
+          currentTime={currentTime}
+          pendingCount={stats?.pending || 0}
+        />
+      )}
+
+      <KPICards stats={stats} loading={loading} isMobile={isMobile} />
+
+      {/* Content area — split pane on desktop, stacked scroll on mobile */}
+      <div style={{
+        flex: isMobile ? 'none' : 1,
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        overflow: isMobile ? 'visible' : 'hidden',
+      }}>
+        {/* Deal list pane */}
+        <div style={{
+          flex: isMobile ? 'none' : '0 0 68%',
+          borderRight: isMobile ? 'none' : '1px solid var(--ode-border)',
+          overflow: isMobile ? 'visible' : 'auto',
+        }}>
           <DealStream
             deals={deals}
             selectedDeal={selectedDeal}
@@ -978,17 +1122,38 @@ export default memo(function OptimizedDecisionEngine() {
             onDelete={handleDelete}
             userRole={userRole}
             loading={loading}
+            isMobile={isMobile}
           />
         </div>
-        
-        <div style={{ flex: '0 0 32%' }}>
-          <AnalysisPanel
-            selectedDeal={selectedDeal}
-            userRole={userRole}
-            onDealAction={handleDealAction}
-          />
-        </div>
+
+        {/* Analysis pane — desktop only (mobile uses bottom sheet below) */}
+        {!isMobile && (
+          <div style={{ flex: '0 0 32%' }}>
+            <AnalysisPanel
+              selectedDeal={selectedDeal}
+              userRole={userRole}
+              onDealAction={handleDealAction}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Mobile: analysis bottom sheet (slides up when deal is selected) */}
+      {isMobile && selectedDeal && (
+        <div className="ode-sheet-overlay" onClick={() => setSelectedDeal(null)}>
+          <div className="ode-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="ode-sheet-handle" />
+            <AnalysisPanel
+              selectedDeal={selectedDeal}
+              userRole={userRole}
+              onDealAction={(deal, action) => {
+                handleDealAction(deal, action);
+                setSelectedDeal(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 });
