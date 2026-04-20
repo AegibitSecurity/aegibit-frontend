@@ -22,7 +22,8 @@
 import * as Sentry from '@sentry/react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-const WS_BASE  = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '');
+const WS_BASE = import.meta.env.VITE_WS_BASE ||
+  API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '');
 
 const isDev = import.meta.env.DEV;
 const REQUEST_TIMEOUT_MS = 15_000;

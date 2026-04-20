@@ -9,13 +9,19 @@
         { "key": "Permissions-Policy",         "value": "camera=(), microphone=(), geolocation=()" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; connect-src 'self' https://aegibit-backend.onrender.com wss://aegibit-backend.onrender.com https://sentry.io https://*.ingest.sentry.io; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none';"
+          "value": "default-src 'self'; connect-src 'self' wss://aegibit-backend.onrender.com https://sentry.io https://*.ingest.sentry.io; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none';"
         }
       ]
     }
   ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/" }
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://aegibit-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
   ]
 }
