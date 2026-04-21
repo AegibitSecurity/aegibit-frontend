@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import MobileTopBar from './components/MobileTopBar';
+import DeliveryAlerts from './components/DeliveryAlerts';
 import LoginPage from './components/LoginPage';
 import ToastContainer from './components/ToastContainer';
 import AppError from './components/AppError';
@@ -319,6 +320,11 @@ export default function App() {
             onLogout={handleLogout}
             onPendingCount={setPendingCount}
           />
+        )}
+        {isMobile && activeView === 'dashboard' && (
+          <div style={{ padding: '0 16px' }}>
+            <DeliveryAlerts key={`deliveries-${refreshKey}`} days={3} onDealClick={(id) => handleNavigate('stream')} />
+          </div>
         )}
         <Suspense fallback={<ViewLoader />}>
           {renderView()}

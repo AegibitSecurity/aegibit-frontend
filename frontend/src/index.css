@@ -3381,3 +3381,141 @@ body {
   padding-top: max(10px, env(safe-area-inset-top, 10px));
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELIVERY ALERTS WIDGET
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.delivery-alerts-wrap {
+  margin: 12px 0 4px;
+}
+
+.delivery-alerts-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.delivery-alerts-badge {
+  background: #F05228;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.delivery-alerts-window {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-muted, #9ca3af);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.delivery-alerts-empty {
+  font-size: 13px;
+  color: var(--color-text-muted, #9ca3af);
+  padding: 12px 0;
+}
+
+.delivery-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-alert-card {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  padding: 0;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.delivery-alert-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.da-accent {
+  width: 4px;
+  background: var(--urgency, #F05228);
+  flex-shrink: 0;
+}
+
+.da-body {
+  flex: 1;
+  padding: 10px 12px;
+}
+
+.da-customer {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #111827);
+  margin-bottom: 2px;
+}
+
+.da-variant {
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+  margin-bottom: 6px;
+}
+
+.da-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.da-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.da-amount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text, #374151);
+}
+
+.da-days {
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.delivery-alert-skeleton {
+  height: 64px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--color-border, #f3f4f6) 25%, var(--color-surface-alt, #e5e7eb) 50%, var(--color-border, #f3f4f6) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  margin-bottom: 8px;
+}

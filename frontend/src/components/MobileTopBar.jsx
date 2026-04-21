@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchOrganizations, getOrgId, setOrgId, getUser, fetchNotifications, markAllNotificationsRead } from '../api';
+import { fetchOrganizations, getOrgId, setOrgId, getUser, fetchNotifications, markAllNotificationsRead, switchOrg } from '../api';
 import { toggleTheme, getEffectiveTheme, onThemeChange } from '../utils/theme';
 import { toggleSound, isSoundEnabled } from '../utils/sound';
 
@@ -55,6 +55,7 @@ const IcoShield = () => (
 export default function MobileTopBar({ onOrgChange, onLogout, onPendingCount }) {
   const [orgs, setOrgs] = useState([]);
   const [orgName, setOrgName] = useState(localStorage.getItem('aegibit_org_name') || '');
+  const [switchingOrg, setSwitchingOrg] = useState(false);
   const [showOrgSheet, setShowOrgSheet] = useState(false);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showNotifSheet, setShowNotifSheet] = useState(false);
@@ -97,15 +98,23 @@ export default function MobileTopBar({ onOrgChange, onLogout, onPendingCount }) 
     return onThemeChange((theme) => setIsDark(theme === 'dark'));
   }, []);
 
-  function handleOrgSelect(org) {
-    setOrgId(org.id);
-    localStorage.setItem('aegibit_org_name', org.name);
-    setOrgName(org.name);
-    window.dispatchEvent(new CustomEvent('orgChanged', {
-      detail: { orgId: org.id, orgName: org.name },
-    }));
-    onOrgChange?.(org.id);
-    setShowOrgSheet(false);
+  async function handleOrgSelect(org) {
+    if (switchingOrg || org.id === getOrgId()) { setShowOrgSheet(false); return; }
+    setSwitchingOrg(true);
+    try {
+      await switchOrg(org.id);
+      localStorage.setItem('aegibit_org_name', org.name);
+      setOrgName(org.name);
+      window.dispatchEvent(new CustomEvent('orgChanged', {
+        detail: { orgId: org.id, orgName: org.name },
+      }));
+      onOrgChange?.(org.id);
+    } catch (err) {
+      console.error('[OrgSwitch]', err);
+    } finally {
+      setSwitchingOrg(false);
+      setShowOrgSheet(false);
+    }
   }
 
   async function handleMarkAllRead() {
@@ -160,7 +169,11 @@ export default function MobileTopBar({ onOrgChange, onLogout, onPendingCount }) 
           <div className="mobile-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-sheet-handle" />
             <div className="mobile-sheet-title">Switch Organization</div>
-            {orgs.map((org) => (
+            {switchingOrg ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>
+                Switching…
+              </div>
+            ) : orgs.map((org) => (
               <button
                 key={org.id}
                 className={`mobile-sheet-item${getOrgId() === org.id ? ' active' : ''}`}

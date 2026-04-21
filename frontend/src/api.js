@@ -423,6 +423,23 @@ export async function fetchOrganizations() {
   return apiFetch('/organizations');
 }
 
+export async function switchOrg(orgId) {
+  const data = await apiFetch('/auth/switch-org', {
+    method: 'POST',
+    body: JSON.stringify({ org_id: orgId }),
+  });
+  // data = { user, access_token }
+  if (isNative && data.access_token) {
+    await setNativeToken(data.access_token);
+  }
+  if (data.user) {
+    setUser(data.user);
+    setOrgId(data.user.organization_id);
+    setRole(data.user.role);
+  }
+  return data;
+}
+
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
 export async function analyzeDeal(data) {
@@ -513,6 +530,10 @@ export async function markAllNotificationsRead() {
 
 export async function fetchUnreadCount() {
   return apiFetch('/notifications/unread-count');
+}
+
+export async function fetchUpcomingDeliveries(days = 3) {
+  return apiFetch(`/notifications/upcoming-deliveries?days=${days}`);
 }
 
 // ── Upload ─────────────────────────────────────────────────────────────────────
