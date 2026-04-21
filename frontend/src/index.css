@@ -12,9 +12,9 @@
   --color-border-default: rgba(255, 255, 255, 0.10);
   --color-border-focus: rgba(59, 130, 246, 0.5);
 
-  --color-primary: #3B82F6;
-  --color-primary-hover: #2563EB;
-  --color-primary-glow: rgba(59, 130, 246, 0.25);
+  --color-primary: #F05228;
+  --color-primary-hover: #D43A10;
+  --color-primary-glow: rgba(240, 82, 40, 0.25);
 
   --color-success: #22C55E;
   --color-success-bg: rgba(34, 197, 94, 0.12);
@@ -51,7 +51,7 @@
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-default: rgba(255, 255, 255, 0.1);
-  --border-focus: rgba(99, 102, 241, 0.5);
+  --border-focus: rgba(240, 82, 40, 0.5);
 
   /* Text */
   --text-primary: #f0f0f5;
@@ -59,11 +59,11 @@
   --text-muted: #5a5a70;
   --text-inverse: #0a0a0f;
 
-  /* Accent gradient */
-  --accent-start: #6366f1;
-  --accent-end: #8b5cf6;
-  --accent-gradient: linear-gradient(135deg, var(--accent-start), var(--accent-end));
-  --accent-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  /* Accent — AEGIBIT brand orange */
+  --accent-start: #F05228;
+  --accent-end: #D43A10;
+  --accent-gradient: linear-gradient(135deg, #F05228, #D43A10);
+  --accent-glow: 0 0 20px rgba(240, 82, 40, 0.3);
 
   /* Risk colors */
   --risk-low: #10b981;
@@ -100,7 +100,7 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 30px rgba(240, 82, 40, 0.15);
 
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -131,7 +131,7 @@
   /* Borders — subtle gray */
   --border-subtle: rgba(0, 0, 0, 0.08);
   --border-default: rgba(0, 0, 0, 0.12);
-  --border-focus: rgba(99, 102, 241, 0.5);
+  --border-focus: rgba(240, 82, 40, 0.5);
 
   /* Text — dark on light */
   --text-primary: #0f172a;
@@ -143,7 +143,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 20px rgba(240, 82, 40, 0.15);
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────── */
@@ -259,9 +259,9 @@ body {
 }
 
 .nav-item.active {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(240, 82, 40, 0.1);
   color: var(--accent-start);
-  border-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(240, 82, 40, 0.15);
 }
 
 .nav-item.active::before {
@@ -328,7 +328,7 @@ body {
 
 .org-switcher select:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px rgba(240, 82, 40, 0.15);
 }
 
 .org-switcher label {
@@ -522,7 +522,7 @@ body {
 }
 
 .btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 3px rgba(240, 82, 40, 0.3);
 }
 
 .btn-primary {
@@ -534,7 +534,7 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 30px rgba(240, 82, 40, 0.4);
 }
 
 .btn-primary:active {
@@ -606,7 +606,7 @@ body {
 
 .form-input:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(240, 82, 40, 0.12);
 }
 
 .form-input::placeholder {
@@ -633,7 +633,7 @@ body {
 
 .form-select:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(240, 82, 40, 0.12);
 }
 
 /* ── Analysis Panel ──────────────────────────────────────────────────────── */
@@ -771,9 +771,9 @@ body {
 }
 
 .filter-btn.active {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(240, 82, 40, 0.12);
   color: var(--accent-start);
-  border-color: rgba(99, 102, 241, 0.25);
+  border-color: rgba(240, 82, 40, 0.25);
 }
 
 /* ── Approval Queue ──────────────────────────────────────────────────────── */
@@ -904,7 +904,7 @@ body {
 
 .autocomplete-item:hover,
 .autocomplete-item.highlighted {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(240, 82, 40, 0.1);
 }
 
 .autocomplete-item-price {
@@ -2397,7 +2397,7 @@ body {
 }
 
 .mobile-sheet-text-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(240, 82, 40, 0.1);
 }
 
 .mobile-sheet-notif-list {
@@ -2412,7 +2412,7 @@ body {
 }
 
 .mobile-sheet-notif-item.unread {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(240, 82, 40, 0.05);
 }
 
 .mobile-sheet-notif-item:last-child {
@@ -3202,3 +3202,182 @@ body {
     font-size: 0.7rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AEGIBIT BRAND — Splash Screen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.splash-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: splashIn 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.splash-logo-wrap svg {
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 0 24px rgba(240, 82, 40, 0.45));
+}
+
+.splash-wordmark {
+  font-family: var(--font-family);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #F05228;
+}
+
+.splash-tagline {
+  font-family: var(--font-family);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-top: -8px;
+}
+
+.splash-pulse {
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #F05228, transparent);
+  border-radius: 9999px;
+  animation: splashPulse 1.2s ease-in-out infinite;
+  margin-top: 8px;
+}
+
+@keyframes splashIn {
+  from { opacity: 0; transform: scale(0.8) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+@keyframes splashPulse {
+  0%, 100% { opacity: 0.3; transform: scaleX(0.6); }
+  50%       { opacity: 1;   transform: scaleX(1.2); }
+}
+
+.splash-screen.fade-out {
+  animation: splashFadeOut 0.4s ease-in forwards;
+}
+
+@keyframes splashFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKELETON LOADERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    rgba(255,255,255,0.06) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-stat-card {
+  height: 88px;
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-row {
+  height: 20px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-row.short { width: 40%; }
+.skeleton-row.medium { width: 65%; }
+.skeleton-row.full  { width: 100%; }
+
+.skeleton-deal-row {
+  height: 64px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENHANCED BOTTOM NAV — AEGIBIT brand
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bottom-nav-item .bn-pill {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 20px;
+  height: 3px;
+  background: #F05228;
+  border-radius: 0 0 3px 3px;
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-nav-item.active .bn-pill {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.bottom-nav-item.active .bottom-nav-icon-wrap svg {
+  filter: drop-shadow(0 0 6px rgba(240, 82, 40, 0.5));
+}
+
+.bottom-nav-item {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.88);
+  transition: transform 80ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTON MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: scale(0.96);
+  transition: transform 80ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SAFE AREA — Capacitor / notch phones
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.mobile-topbar {
+  padding-top: max(10px, env(safe-area-inset-top, 10px));
+}
+

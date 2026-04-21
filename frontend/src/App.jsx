@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { Capacitor } from '@capacitor/core';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import MobileTopBar from './components/MobileTopBar';
@@ -8,6 +9,8 @@ import AppError from './components/AppError';
 import { themeManager } from './utils/theme';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useAppUpdate } from './hooks/useAppUpdate';
+import { useBackButton } from './hooks/useBackButton';
+import SplashScreen from './components/SplashScreen';
 import { isAuthenticated, getUser, logout, fetchCurrentUser, clearToken, fetchDashboard, getOrgId } from './api';
 
 const OptimizedDecisionEngine = lazy(() => import('./components/OptimizedDecisionEngine'));
@@ -75,6 +78,7 @@ export default function App() {
   const [queueSize, setQueueSize] = useState(0);
   const [drainMsg, setDrainMsg] = useState('');
 
+  const [splashDone, setSplashDone] = useState(() => !Capacitor.isNativePlatform());
   const isMobile = useIsMobile();
   const currentUser = getUser();
   const { updateReady, installUpdate } = useAppUpdate();
@@ -156,6 +160,9 @@ export default function App() {
     setSidebarOpen(false);
   }, []);
 
+  // Hardware back button — must be after handleNavigate is defined
+  useBackButton(activeView, handleNavigate);
+
   useEffect(() => {
     const up = () => setIsOnline(true);
     const down = () => setIsOnline(false);
@@ -193,6 +200,11 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // ── Splash screen on first load (native only) ─────────────────────────────
+  if (!splashDone) {
+    return <SplashScreen onDone={() => setSplashDone(true)} />;
+  }
 
   // ── Auth loading — show spinner until token validation completes ──────────
   if (isAuthLoading) return <AuthLoadingScreen />;

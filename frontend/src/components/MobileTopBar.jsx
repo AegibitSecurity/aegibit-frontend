@@ -43,9 +43,12 @@ const IcoCheck = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
-const IcoZap = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+const IcoShield = () => (
+  <svg width="26" height="30" viewBox="0 0 80 92" fill="none">
+    <path d="M40 4L72 16V46C72 66 58 78 40 88C22 78 8 66 8 46V16L40 4Z" fill="#F05228"/>
+    <path d="M40 20C40 20 60 28 60 28V48C60 60 52 68 40 74C28 68 20 60 20 48V28Z" fill="white" opacity="0.92"/>
+    <path d="M28 36L40 52L52 36V28H28Z" fill="#F05228"/>
+    <path d="M52 20C56 22 60 25 60 28L52 28Z" fill="#F05228"/>
   </svg>
 );
 
@@ -118,7 +121,7 @@ export default function MobileTopBar({ onOrgChange, onLogout, onPendingCount }) 
       <header className="mobile-topbar">
         {/* Brand */}
         <div className="mobile-topbar-brand">
-          <IcoZap />
+          <IcoShield />
           <span>AEGIBIT</span>
         </div>
 
