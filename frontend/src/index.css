@@ -3103,6 +3103,28 @@ body {
   color: #f87171;
 }
 
+.branch-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.branch-tag.branch-hq {
+  background: rgba(240, 82, 40, 0.15);
+  color: #F05228;
+  border-color: rgba(240, 82, 40, 0.35);
+}
+
+.branch-tag.branch-none {
+  opacity: 0.4;
+}
+
 .btn-toggle {
   padding: 6px 14px;
   border: none;

@@ -120,6 +120,21 @@ export function setRole(role) {
   localStorage.setItem('aegibit_role', role);
 }
 
+export function getBranchId() {
+  const user = getUser();
+  return user?.branch_id || null;
+}
+
+export function getBranchName() {
+  const user = getUser();
+  return user?.branch_name || null;
+}
+
+export function isHeadOffice() {
+  const name = getBranchName();
+  return name === 'BERHAMPORE';
+}
+
 // ── Error classes ─────────────────────────────────────────────────────────────
 
 /**
@@ -534,6 +549,12 @@ export async function fetchUnreadCount() {
 
 export async function fetchUpcomingDeliveries(days = 3) {
   return apiFetch(`/notifications/upcoming-deliveries?days=${days}`);
+}
+
+// ── Branches ──────────────────────────────────────────────────────────────────
+
+export async function fetchBranches() {
+  return apiFetch('/branches');
 }
 
 // ── Upload ─────────────────────────────────────────────────────────────────────

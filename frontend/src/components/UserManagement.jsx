@@ -8,7 +8,7 @@
  *  - Role dropdown excludes ADMIN
  */
 import { useState, useEffect, useCallback } from 'react';
-import { fetchUsers, createUser, toggleUserStatus, fetchOrganizations, getOrgId } from '../api';
+import { fetchUsers, createUser, toggleUserStatus, fetchOrganizations, fetchBranches, getOrgId } from '../api';
 
 const ROLE_OPTIONS = [
   { value: 'SALES', label: 'Sales', icon: '👤' },
@@ -19,6 +19,7 @@ const ROLE_OPTIONS = [
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [orgs, setOrgs] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -28,6 +29,7 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('SALES');
   const [newOrgId, setNewOrgId] = useState(getOrgId());
+  const [newBranchId, setNewBranchId] = useState('');
   const [creating, setCreating] = useState(false);
 
   const loadUsers = useCallback(() => {
@@ -45,8 +47,13 @@ export default function UserManagement() {
 
   useEffect(() => {
     loadUsers();
-    fetchOrganizations()
-      .then(setOrgs)
+    fetchOrganizations().then(setOrgs).catch(console.error);
+    fetchBranches()
+      .then((data) => {
+        setBranches(data);
+        const hq = data.find((b) => b.is_head_office);
+        if (hq) setNewBranchId(hq.id);
+      })
       .catch(console.error);
   }, [loadUsers]);
 
@@ -62,6 +69,7 @@ export default function UserManagement() {
         password: newPassword,
         role: newRole,
         organization_id: newOrgId,
+        branch_id: newBranchId || null,
       });
       setSuccess(`User ${newEmail} created successfully as ${newRole}`);
       setNewEmail('');
@@ -135,6 +143,19 @@ export default function UserManagement() {
               </select>
             </div>
             <div className="form-group">
+              <label>Branch</label>
+              <select value={newBranchId} onChange={(e) => setNewBranchId(e.target.value)}>
+                <option value="">No branch assigned</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}{b.is_head_office ? ' (Head Office)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
               <label>Organization</label>
               <select value={newOrgId} onChange={(e) => setNewOrgId(e.target.value)}>
                 {orgs.map((org) => (
@@ -167,6 +188,7 @@ export default function UserManagement() {
                 <tr>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Branch</th>
                   <th>Status</th>
                   <th>Created</th>
                   <th>Actions</th>
@@ -178,6 +200,15 @@ export default function UserManagement() {
                     <td>{user.email}</td>
                     <td>
                       <span className="role-badge">{getRoleIcon(user.role)} {user.role}</span>
+                    </td>
+                    <td>
+                      {user.branch_name ? (
+                        <span className={`branch-tag${user.branch_name === 'BERHAMPORE' ? ' branch-hq' : ''}`}>
+                          {user.branch_name}
+                        </span>
+                      ) : (
+                        <span className="branch-tag branch-none">—</span>
+                      )}
                     </td>
                     <td>
                       <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>

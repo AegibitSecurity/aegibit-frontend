@@ -50,7 +50,13 @@ export default function DealCard({ deal, actions, className = '', onRefresh }) {
             <div className="card-title">{deal.customer_name || 'Unknown'}</div>
             <div className="card-subtitle">{deal.variant}</div>
           </div>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {deal.branch_name && (
+              <span className={`branch-tag${deal.branch_name === 'BERHAMPORE' ? ' branch-hq' : ''}`}
+                style={{ fontSize: '11px', padding: '2px 6px' }}>
+                {deal.branch_name}
+              </span>
+            )}
             <span className={`badge badge-${risk}`}>
               {risk === 'low' ? '🟢' : risk === 'medium' ? '🟡' : '🔴'} {deal.risk_level}
             </span>
