@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
-// Capacitor sets this when running as a native app.
-// We always treat native as mobile regardless of viewport width.
-const isNativePlatform = !!(
-  typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()
-);
+// Stable at module load time — Capacitor static import is always ready.
+const IS_NATIVE = Capacitor.isNativePlatform();
 
 export function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (isNativePlatform) return true;
-    return typeof window !== 'undefined' && window.innerWidth <= breakpoint;
-  });
+  const [isMobile, setIsMobile] = useState(
+    () => IS_NATIVE || (typeof window !== 'undefined' && window.innerWidth <= breakpoint)
+  );
 
   useEffect(() => {
-    // Native apps are always "mobile" — no need for a resize listener.
-    if (isNativePlatform) return;
+    // Native Android/iOS is always treated as mobile — no resize listener needed.
+    if (IS_NATIVE) {
+      setIsMobile(true);
+      return;
+    }
     const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
     setIsMobile(mq.matches);
     const handler = (e) => setIsMobile(e.matches);
